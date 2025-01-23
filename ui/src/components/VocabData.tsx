@@ -1,3 +1,5 @@
+import type { InitialTableState } from '@tanstack/react-table'
+
 import usePagination from '@mui/material/usePagination'
 import { useUnmountEffect } from '@react-hookz/web'
 import {
@@ -7,11 +9,11 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  type InitialTableState,
   useReactTable,
 } from '@tanstack/react-table'
 import { useSessionStorage } from 'react-use'
 
+import type { LearningPhase } from '@/lib/LabeledTire'
 import type { LabelDisplayTable } from '@/lib/vocab'
 
 import { statusLabels, userVocabularyAtom } from '@/api/vocab-api'
@@ -24,7 +26,7 @@ import { useVocabularyCommonColumns } from '@/components/vocabulary/columns'
 import { VocabularyMenu } from '@/components/vocabulary/menu'
 import { useLastTruthy } from '@/lib/hooks'
 import { SortIcon } from '@/lib/icon-utils'
-import { LEARNING_PHASE, type LearningPhase } from '@/lib/LabeledTire'
+import { LEARNING_PHASE } from '@/lib/LabeledTire'
 import { tryGetRegex } from '@/lib/regex'
 import { findClosest, getFallBack } from '@/lib/utilities'
 import { vocabRealtimeSyncStatusAtom } from '@/store/useVocab'

@@ -1,6 +1,8 @@
 import { useMediaQuery } from 'foxact/use-media-query'
 import { Link, Outlet } from 'react-router'
 
+import type { LabelDisplaySource } from '@/lib/vocab'
+
 import {
   baseVocabAtom,
   useIrregularMapsQuery,
@@ -10,7 +12,6 @@ import { VocabSourceTable } from '@/components/VocabSource'
 import { LabeledTire, LEARNING_PHASE } from '@/lib/LabeledTire'
 import {
   formVocab,
-  type LabelDisplaySource,
 } from '@/lib/vocab'
 import { statusRetainedList } from '@/lib/vocab-utils'
 import { fileTypesAtom, isSourceTextStaleAtom, sourceTextAtom } from '@/store/useVocab'

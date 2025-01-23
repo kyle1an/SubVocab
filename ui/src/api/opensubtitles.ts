@@ -2,11 +2,13 @@ import type { MergeDeep, PartialDeep } from 'type-fest'
 
 import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 import { ofetch } from 'ofetch'
+import PQueue from 'p-queue'
 
 import type { paths } from '@/types/schema-opensubtitles'
 
 import { env } from '@/env'
 import { omitUndefined } from '@/lib/utilities'
+import { subtitleDownloadProgressAtom } from '@/store/useVocab'
 
 type subtitles_parameters_query = {
   // https://forum.opensubtitles.org/viewtopic.php?t=17146&start=105#p48222
@@ -101,25 +103,72 @@ export function useOpenSubtitlesLogin() {
   })
 }
 
-type Download = {
+export type Download = {
   Body: NonNullable<paths['/download']['post']['requestBody']>['content']['application/json']
   Response: paths['/download']['post']['responses'][200]['content']['application/json']
 }
 
-export function useOpenSubtitlesDownload() {
+const osQueue = new PQueue({
+  concurrency: 20,
+  interval: 1000,
+  intervalCap: 20,
+  carryoverConcurrencyCount: true,
+})
+
+function useRequestSubtitleURL() {
   const { baseUrl } = useAtomValue(opensubtitlesReqAtom)
   const Authorization = useAtomValue(opensubtitlesAuthorizationAtom)
   return useMutation({
-    mutationKey: ['subtitles-download'],
+    mutationKey: ['requestSubtitleDownloadURL'],
     mutationFn: (body: Download['Body']) => {
-      return ofetch<Download['Response']>(`${baseUrl}/download`, {
+      return osQueue.add(() => ofetch<Download['Response']>(`${baseUrl}/download`, {
         method: 'POST',
         body,
         headers: omitUndefined({
           Authorization,
         }),
-        retry: 3,
+      }), {
+        throwOnTimeout: true,
       })
     },
+    retry: 4,
+    retryDelay: (failureCount) => 1000 * (failureCount - 1),
+  })
+}
+
+function useGetFileByLink() {
+  return useMutation({
+    mutationKey: ['getFileByLink'] as const,
+    mutationFn: async (link: string) => {
+      return osQueue.add(() => ofetch<string>(link), {
+        throwOnTimeout: true,
+        priority: 1,
+      })
+    },
+    retry: 4,
+    retryDelay: (failureCount) => 1000 * (failureCount - 1),
+  })
+}
+
+export function useOpenSubtitlesDownload() {
+  const setSubtitleDownloadProgress = useSetAtom(subtitleDownloadProgressAtom)
+  const { mutateAsync: requestSubtitleURL } = useRequestSubtitleURL()
+  const { mutateAsync: getFileByLink } = useGetFileByLink()
+  return useMutation({
+    mutationKey: ['getSubtitleByFileId'] as const,
+    mutationFn: async (body: Download['Body']) => {
+      const file = await requestSubtitleURL(body)
+      return {
+        file,
+        text: await getFileByLink(file.link),
+      }
+    },
+    onSuccess: (data, body) => {
+      setSubtitleDownloadProgress((prev) => {
+        prev.push(body)
+      })
+    },
+    retry: 4,
+    retryDelay: (failureCount) => 1000 * (failureCount - 1),
   })
 }

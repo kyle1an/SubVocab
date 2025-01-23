@@ -1,3 +1,5 @@
+import type { InitialTableState } from '@tanstack/react-table'
+
 import usePagination from '@mui/material/usePagination'
 import { useUnmountEffect } from '@react-hookz/web'
 import {
@@ -7,7 +9,6 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  type InitialTableState,
   useReactTable,
 } from '@tanstack/react-table'
 import {
@@ -15,6 +16,7 @@ import {
 } from 'react-i18next'
 import { useSessionStorage } from 'react-use'
 
+import type { LearningPhase } from '@/lib/LabeledTire'
 import type { LabelDisplaySource } from '@/lib/vocab'
 
 import { SearchWidget } from '@/components/search-widget'
@@ -27,7 +29,7 @@ import { ExampleSentence } from '@/components/vocabulary/example-sentence'
 import { VocabularyMenu } from '@/components/vocabulary/menu'
 import { useLastTruthy } from '@/lib/hooks'
 import { SortIcon } from '@/lib/icon-utils'
-import { LEARNING_PHASE, type LearningPhase } from '@/lib/LabeledTire'
+import { LEARNING_PHASE } from '@/lib/LabeledTire'
 import { tryGetRegex } from '@/lib/regex'
 import { findClosest } from '@/lib/utilities'
 import { isSourceTextStaleAtom } from '@/store/useVocab'

@@ -1,13 +1,16 @@
+import type { RealtimePostgresInsertPayload, RealtimePostgresUpdatePayload } from '@supabase/supabase-js'
 import type { Tables } from '@ui/database.types'
 import type { ValueOf } from 'type-fest'
 
 import { UTCDateMini } from '@date-fns/utc'
-import { REALTIME_CHANNEL_STATES, type RealtimePostgresInsertPayload, type RealtimePostgresUpdatePayload } from '@supabase/supabase-js'
+import { REALTIME_CHANNEL_STATES } from '@supabase/supabase-js'
 import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 import { atomWithQuery } from 'jotai-tanstack-query'
 
+import type { LearningPhase, VocabState } from '@/lib/LabeledTire'
+
 import { usePageVisibility } from '@/hooks/utils'
-import { LEARNING_PHASE, type LearningPhase, type VocabState } from '@/lib/LabeledTire'
+import { LEARNING_PHASE } from '@/lib/LabeledTire'
 import { omitUndefined } from '@/lib/utilities'
 import { queryClient, sessionAtom, supabase, vocabRealtimeSyncStatusAtom } from '@/store/useVocab'
 

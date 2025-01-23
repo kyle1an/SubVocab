@@ -1,7 +1,9 @@
+import type { InitialTableState } from '@tanstack/react-table'
+
 import usePagination from '@mui/material/usePagination'
 import NumberFlow from '@number-flow/react'
 import { useQueries } from '@tanstack/react-query'
-import { createColumnHelper, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, type InitialTableState, useReactTable } from '@tanstack/react-table'
+import { createColumnHelper, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from '@tanstack/react-table'
 import { maxBy, sum } from 'lodash-es'
 
 import type { SubtitleResponseData } from '@/api/opensubtitles'
@@ -16,33 +18,29 @@ import { SortIcon } from '@/lib/icon-utils'
 import { getFileId } from '@/lib/subtitle'
 import { sortBySelection } from '@/lib/table-utils'
 import { findClosest, naturalNumLength } from '@/lib/utilities'
-import { subtitleSelectionStateAtom, subtitleSelectionStateFamily } from '@/store/useVocab'
+import { subtitleDataSelectionStateAtom, subtitleSelectionStateAtom, subtitleSelectionStateFamily } from '@/store/useVocab'
 
 type ExpandableRow<T> = T & { subRows?: T[] }
 
-type SubtitleData = SubtitleResponseData
+type SubtitleData = SubtitleResponseData & { _rowId?: string }
 
 type SubtitleDataExpandable = ExpandableRow<SubtitleData>
 
-function useTVColumns<T extends SubtitleDataExpandable>(id: number, highestEpisodeNumber = 0) {
+function useTVColumns<T extends SubtitleDataExpandable>(mediaId: number, highestEpisodeNumber = 0) {
   const { t } = useTranslation()
   const columnHelper = createColumnHelper<T>()
   const [osSession] = useAtom(osSessionAtom)
-  const [rowSelection = {}] = useAtom(subtitleSelectionStateFamily(id))
+  const [rowSelection = {}] = useAtom(subtitleSelectionStateFamily(mediaId))
   const setSubtitleSelectionState = useSetAtom(subtitleSelectionStateAtom)
+  const setSubtitleDataSelectionState = useSetAtom(subtitleDataSelectionStateAtom)
   return [
     columnHelper.accessor((row) => row.id, {
       id: 'action',
       sortingFn: sortBySelection,
       header: ({ header, table }) => {
         const { rows } = table.getRowModel()
-        const { parentRows = [], subRows = [] } = Object.groupBy(rows, (row) => {
-          if (row.depth === 0)
-            return 'parentRows'
-          else
-            return 'subRows'
-        })
-        const checked = parentRows.length > 0 && parentRows.every((row) => rowSelection[getFileId(row.original)])
+        const parentRows = rows.filter((row) => row.depth === 0)
+        const checked = parentRows.length > 0 && parentRows.every((row) => rowSelection[row.id])
         const isSorted = header.column.getIsSorted()
         return (
           <TableHeaderCell
@@ -60,17 +58,20 @@ function useTVColumns<T extends SubtitleDataExpandable>(id: number, highestEpiso
                     className="child"
                     onClick={(e) => {
                       e.stopPropagation()
-                      setSubtitleSelectionState((state) => {
+                      setSubtitleSelectionState((selection) => {
                         if (checked) {
-                          state[id] = {}
+                          selection[mediaId] = {}
                         }
                         else {
-                          const selectionState = state[id] ??= {}
-                          parentRows.forEach((row) => {
-                            selectionState[getFileId(row.original)] = true
-                          })
-                          subRows.forEach((row) => {
-                            selectionState[getFileId(row.original)] = false
+                          const selectionState = selection[mediaId] ??= {}
+                          parentRows.forEach((parentRow) => {
+                            selectionState[parentRow.id] = true
+                            parentRow.subRows.forEach(({ id, original }, index) => {
+                              selectionState[id] = index === 0
+                              setSubtitleDataSelectionState((data) => {
+                                data[id] = original
+                              })
+                            })
                           })
                         }
                       })
@@ -103,10 +104,18 @@ function useTVColumns<T extends SubtitleDataExpandable>(id: number, highestEpiso
                 }}
               >
                 <Checkbox
+                  variant={row.depth === 0 ? undefined : 'radio'}
                   onClick={(e) => e.stopPropagation()}
                   checked={row.getIsSelected()}
                   onCheckedChange={(checked) => {
-                    onRowSelectionChange?.(checked, row)
+                    if (row.depth === 0) {
+                      const [row1] = row.subRows
+                      if (row1)
+                        onRowSelectionChange?.(checked, row1, 'singleSubRow')
+                    }
+                    else {
+                      onRowSelectionChange?.(checked, row, 'singleSubRow')
+                    }
                   }}
                 />
                 {'\u200B'}
@@ -212,11 +221,13 @@ function groupSubtitleRows(rows: SubtitleData[]) {
   for (const group of Object.values(rest)) {
     if (group) {
       group.sort((a, b) => b.attributes.download_count - a.attributes.download_count)
-      const [parent, ...subRows] = group
+      const [parent] = group
       if (parent) {
+        const { season_number, episode_number } = parent.attributes.feature_details
         subtitles.push({
           ...parent,
-          subRows,
+          _rowId: `${season_number}0${episode_number}`,
+          subRows: group,
         })
       }
     }
@@ -273,10 +284,10 @@ export function TVSubtitleFiles({
     data: groupSubtitleRows(subtitles),
     columns,
     initialState: initialTableState,
-    autoResetPageIndex: false,
     state: {
       rowSelection,
     },
+    autoResetPageIndex: false,
     getRowId: getFileId,
     getRowCanExpand: (row) => row?.subRows.length >= 1,
     getSubRows: (row) => row?.subRows ?? [],
@@ -300,18 +311,20 @@ export function TVSubtitleFiles({
         <SquircleMask
           className="flex size-full flex-col bg-[--theme-bg]"
         >
-          <div className="flex h-12 gap-2 p-1.5">
-            <div className="flex aspect-square h-full items-center justify-center">
-              {isPending ? (
-                <IconLucideLoader2
-                  className="animate-spin"
-                />
-              ) : null}
+          <div>
+            <div className="flex h-9 gap-2 p-1.5">
+              <div className="flex aspect-square items-center justify-center">
+                {isPending ? (
+                  <IconLucideLoader2
+                    className="animate-spin"
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
           <div
             ref={rootRef}
-            className="size-full grow overflow-auto overflow-y-scroll overscroll-contain"
+            className="grow overflow-auto overflow-y-scroll overscroll-contain"
           >
             <table className="relative min-w-full border-separate border-spacing-0">
               <TableHeader>

@@ -1,7 +1,8 @@
+import type { Cell, Row } from '@tanstack/react-table'
 import type { ReactElement, RefObject } from 'react'
 
 import { Slot } from '@radix-ui/react-slot'
-import { type Cell, flexRender, type Row } from '@tanstack/react-table'
+import { flexRender } from '@tanstack/react-table'
 import { useRetimer } from 'foxact/use-retimer'
 import { sum } from 'lodash-es'
 import React from 'react'

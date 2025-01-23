@@ -1,16 +1,19 @@
 import 'chart.js/auto'
+
+import type { ChartData, ChartOptions } from 'chart.js'
+
 import {
-  type ChartData,
   Chart as ChartJS,
-  type ChartOptions,
 } from 'chart.js'
 import { merge, rangeRight } from 'lodash-es'
 import { Bar } from 'react-chartjs-2'
 import { useSessionStorage } from 'react-use'
 import colors from 'tailwindcss/colors'
 
+import type { VocabState } from '@/lib/LabeledTire'
+
 import { baseVocabAtom } from '@/api/vocab-api'
-import { LEARNING_PHASE, type VocabState } from '@/lib/LabeledTire'
+import { LEARNING_PHASE } from '@/lib/LabeledTire'
 
 type DataSet = {
   groupName: string

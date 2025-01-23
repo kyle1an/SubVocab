@@ -5,7 +5,9 @@ import { isEqual } from 'lodash-es'
 import { useSearchParams } from 'react-router'
 import { useImmer } from 'use-immer'
 
-import { type FileType, fileTypesAtom, isDrawerOpenAtom } from '@/store/useVocab'
+import type { FileType } from '@/store/useVocab'
+
+import { fileTypesAtom, isDrawerOpenAtom } from '@/store/useVocab'
 
 function FileSettingsContent({
   className,

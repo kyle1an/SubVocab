@@ -1,10 +1,10 @@
+import type { InitialTableState } from '@tanstack/react-table'
+
 import usePagination from '@mui/material/usePagination'
 import NumberFlow from '@number-flow/react'
 import { useUnmountEffect } from '@react-hookz/web'
-import { useMutation } from '@tanstack/react-query'
-import { createColumnHelper, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, type InitialTableState, useReactTable } from '@tanstack/react-table'
+import { createColumnHelper, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from '@tanstack/react-table'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
-import { ofetch } from 'ofetch'
 import { useNavigate } from 'react-router'
 
 import type { paths as PathsThemoviedb } from '@/types/schema-themoviedb'
@@ -18,7 +18,7 @@ import { TablePaginationSizeSelect } from '@/components/table-pagination-size-se
 import { TableDataCell, TableHeaderCell, TableHeaderCellRender, TableRow } from '@/components/ui/table-element'
 import { SortIcon } from '@/lib/icon-utils'
 import { findClosest } from '@/lib/utilities'
-import { sourceTextAtom, subtitleSelectionStateAtom } from '@/store/useVocab'
+import { fileIdsAtom, sourceTextAtom, subtitleDownloadProgressAtom, subtitleSelectionStateAtom } from '@/store/useVocab'
 
 const mediaSearchAtom = atomWithStorage('mediaSearchAtom', '')
 
@@ -346,13 +346,14 @@ function useColumns<T extends TableData>() {
 export function Subtitles() {
   // eslint-disable-next-line react-compiler/react-compiler
   'use no memo'
-  const { mutateAsync: download } = useOpenSubtitlesDownload()
+  const { isPending: isDownloadPending, mutateAsync: download } = useOpenSubtitlesDownload()
   const [query, setQuery] = useAtom(mediaSearchAtom)
   const [initialTableState, setInitialTableState] = useAtom(initialTableStateAtom)
   const debouncedQuery = useDebouncedValue(query, 500)
   const columns = useColumns()
   const setSourceText = useSetAtom(sourceTextAtom)
-  const { data: movie, isLoading: isSearchLoading } = $api.useQuery(
+  const [subtitleDownloadProgress, setSubtitleDownloadProgress] = useAtom(subtitleDownloadProgressAtom)
+  const { data: movie, isFetching: isSearchLoading } = $api.useQuery(
     'get',
     '/3/search/multi',
     {
@@ -364,6 +365,7 @@ export function Subtitles() {
     },
     {
       enabled: Boolean(debouncedQuery),
+      placeholderData: (prev) => prev,
     },
   )
   const table = useReactTable({
@@ -383,24 +385,18 @@ export function Subtitles() {
   const rowsFiltered = table.getFilteredRowModel().rows
   const navigate = useNavigate()
   const [isPending, starTransition] = useTransition()
-  const { isPending: isDownloadPending, mutateAsync: getFileById } = useMutation({
-    mutationKey: ['getFileById'] as const,
-    mutationFn: async (file_id: number) => {
-      const file = await download({
-        file_id,
-      })
-      return await ofetch<string>(file.link)
-    },
-    retry: 2,
-  })
-  const [subtitleSelectionState, setSubtitleSelectionState] = useAtom(subtitleSelectionStateAtom)
-  const fileIds = Object.values(subtitleSelectionState).flatMap((innerObj) => Object.keys(innerObj).filter((key) => innerObj[key]).map(Number))
+  const setSubtitleSelectionState = useSetAtom(subtitleSelectionStateAtom)
+  const [fileIds] = useAtom(fileIdsAtom)
 
   async function getFiles(fileIds: number[]) {
     starTransition(async () => {
-      const fileTexts = await Promise.all(fileIds.map((id) => {
-        return getFileById(id)
+      const fileTexts = await Promise.all(fileIds.map(async (id) => {
+        const { text } = await download({
+          file_id: id,
+        })
+        return text
       }))
+      setSubtitleDownloadProgress([])
       setSourceText((v) => ({
         text: fileTexts.join('\n'),
         version: v.version++,
@@ -430,65 +426,97 @@ export function Subtitles() {
       <SquircleMask
         className="flex size-full flex-col bg-[--theme-bg]"
       >
-        <div className="flex h-12 gap-2 p-2">
-          <InputWrapper className="[--sq-r:6] after:sq-smooth-[0.8]">
-            <Input
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
+        <div>
+          <div className="flex h-12 gap-2 p-2">
+            <InputWrapper className="[--sq-r:6] after:sq-smooth-[0.8]">
+              <Input
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                }}
+                className="h-full text-base sq-smooth-[0.9] md:text-sm"
+              />
+            </InputWrapper>
+            <div className="flex aspect-square h-full items-center justify-center">
+              {isSearchLoading ? (
+                <IconLucideLoader2
+                  className="animate-spin"
+                />
+              ) : null}
+            </div>
+            <div className="grow"></div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-full gap-1.5 px-3"
+                >
+                  <IconOuiTokenKey className="min-w-[1em]" />
+                  <span className="hidden md:block">
+                    OpenSubtitles Login
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72">
+                <OpensubtitlesAuthentication />
+              </PopoverContent>
+            </Popover>
+            <Button
+              className="h-full gap-1.5 px-3"
+              variant="outline"
+              disabled={fileIds.length === 0}
+              onClick={clearSelection}
+            >
+              <IconF7MultiplyCircle className="min-w-[1em]" />
+              <span className="hidden md:block">
+                Clear
+              </span>
+            </Button>
+            <Button
+              className="h-full gap-1.5 px-3 tabular-nums"
+              onClick={() => {
+                getFiles(fileIds)
               }}
-              className="h-full text-base sq-smooth-[0.9] md:text-sm"
-            />
-          </InputWrapper>
-          <div className="flex aspect-square h-full items-center justify-center">
-            {isSearchLoading ? (
-              <IconLucideLoader2
-                className="animate-spin"
-              />
-            ) : null}
+              disabled={fileIds.length === 0 || isDownloadPending}
+            >
+              {isDownloadPending || isPending ? (
+                <IconLucideLoader2
+                  className="min-w-[1em] animate-spin"
+                />
+              ) : (
+                <IconF7ArrowDownCircleFill className="min-w-[1em]" />
+              )}
+              <span className="hidden md:block">
+                Download
+              </span>
+              {isDownloadPending ? (
+                <div className="flex items-center gap-1.5">
+                  <span>
+                    <NumberFlow
+                      value={subtitleDownloadProgress.length}
+                    />
+                    {` / `}
+                    <NumberFlow
+                      value={fileIds.length}
+                    />
+                  </span>
+                </div>
+              ) : (
+                <NumberFlow
+                  value={fileIds.length}
+                  className={clsx(fileIds.length === 0 ? 'hidden' : '')}
+                  isolate
+                />
+              )}
+            </Button>
           </div>
-          <div className="grow"></div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" className="h-full">OpenSubtitles Login</Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-72">
-              <OpensubtitlesAuthentication />
-            </PopoverContent>
-          </Popover>
-          <Button
-            className="h-full gap-1.5"
-            variant="outline"
-            disabled={fileIds.length === 0}
-            onClick={clearSelection}
-          >
-            <span className="tabular-nums">
-              Clear
-            </span>
-          </Button>
-          <Button
-            className="h-full gap-1.5"
-            onClick={() => {
-              getFiles(fileIds)
-            }}
-            disabled={fileIds.length === 0 || isDownloadPending}
-          >
-            <span className="tabular-nums">
-              {`Download ${fileIds.length || ''}`}
-            </span>
-            {isDownloadPending || isPending ? (
-              <IconLucideLoader2
-                className="animate-spin"
-              />
-            ) : null}
-          </Button>
         </div>
         <div
           ref={rootRef}
-          className="size-full grow overflow-auto overflow-y-scroll overscroll-contain"
+          className="grow overflow-auto overflow-y-scroll overscroll-contain"
         >
-          <table className="relative min-w-full border-separate border-spacing-0">
+          <table className="relative border-separate border-spacing-0">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
@@ -520,7 +548,7 @@ export function Subtitles() {
             </tbody>
           </table>
         </div>
-        <div className="flex w-full flex-wrap items-center justify-between gap-0.5 border-t border-t-zinc-200 py-1 pr-0.5 tabular-nums dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-0.5 border-t border-t-zinc-200 py-1 pr-0.5 tabular-nums dark:border-slate-800">
           <TablePagination
             items={items}
             table={table}
@@ -536,7 +564,7 @@ export function Subtitles() {
             </div>
           </div>
         </div>
-        <div className="flex w-full justify-center border-t border-solid border-t-zinc-200 bg-background dark:border-slate-800">
+        <div className="flex justify-center border-t border-solid border-t-zinc-200 bg-background dark:border-slate-800">
           <div className="flex h-7 items-center text-xs tabular-nums">
             <span>
               <NumberFlow

@@ -1,7 +1,8 @@
+import type { FigmaSquircleParams } from 'figma-squircle'
 import type { SetOptional } from 'type-fest'
 
 import { Slot } from '@radix-ui/react-slot'
-import { type FigmaSquircleParams, getSvgPath } from 'figma-squircle'
+import { getSvgPath } from 'figma-squircle'
 
 import { useRect } from '@/lib/hooks'
 import { mergeRefs } from '@/lib/merge-refs'

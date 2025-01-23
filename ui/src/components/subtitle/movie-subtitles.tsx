@@ -1,6 +1,8 @@
+import type { InitialTableState } from '@tanstack/react-table'
+
 import usePagination from '@mui/material/usePagination'
 import NumberFlow from '@number-flow/react'
-import { createColumnHelper, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, type InitialTableState, useReactTable } from '@tanstack/react-table'
+import { createColumnHelper, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from '@tanstack/react-table'
 
 import type { SubtitleResponseData } from '@/api/opensubtitles'
 
@@ -55,10 +57,11 @@ function useMovieColumns<T extends SubtitleData>() {
                 )}
               >
                 <Checkbox
+                  variant="radio"
                   onClick={(e) => e.stopPropagation()}
                   checked={row.getIsSelected()}
                   onCheckedChange={(checked) => {
-                    onRowSelectionChange?.(checked, row)
+                    onRowSelectionChange?.(checked, row, 'singleRow')
                   }}
                 />
                 {'\u200B'}
@@ -135,19 +138,21 @@ export function MovieSubtitleFiles({
         <SquircleMask
           className="flex size-full flex-col bg-[--theme-bg]"
         >
-          <div className="flex h-12 gap-2 p-1.5">
-            <div className="flex aspect-square h-full items-center justify-center">
-              {isPending ? (
-                <IconLucideLoader2
-                  className="animate-spin"
-                />
-              ) : null}
+          <div>
+            <div className="flex h-9 gap-2 p-1.5">
+              <div className="flex aspect-square items-center justify-center">
+                {isPending ? (
+                  <IconLucideLoader2
+                    className="animate-spin"
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
           <div
-            className="size-full grow overflow-auto overflow-y-scroll overscroll-contain"
+            className="grow overflow-auto overflow-y-scroll overscroll-contain"
           >
-            <table className="relative min-w-full border-separate border-spacing-0">
+            <table className="relative border-separate border-spacing-0">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
@@ -173,7 +178,7 @@ export function MovieSubtitleFiles({
               </tbody>
             </table>
           </div>
-          <div className="flex w-full flex-wrap items-center justify-between gap-0.5 border-t border-t-zinc-200 py-1 pr-0.5 tabular-nums dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-0.5 border-t border-t-zinc-200 py-1 pr-0.5 tabular-nums dark:border-slate-800">
             <TablePagination
               items={items}
               table={table}
@@ -189,7 +194,7 @@ export function MovieSubtitleFiles({
               </div>
             </div>
           </div>
-          <div className="flex w-full justify-center border-t border-solid border-t-zinc-200 bg-background dark:border-slate-800">
+          <div className="flex justify-center border-t border-solid border-t-zinc-200 bg-background dark:border-slate-800">
             <div className="flex h-7 items-center text-xs tabular-nums">
               <span>
                 <NumberFlow

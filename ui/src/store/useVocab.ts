@@ -1,8 +1,9 @@
 import type { AppRouter } from '@backend/app'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import type { Database } from '@ui/database.types'
 import type { ArrayValues, PartialDeep } from 'type-fest'
 
-import { type AuthChangeEvent, createClient, REALTIME_CHANNEL_STATES, type Session } from '@supabase/supabase-js'
+import { createClient, REALTIME_CHANNEL_STATES } from '@supabase/supabase-js'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { QueryClient } from '@tanstack/react-query'
 import { persistQueryClient } from '@tanstack/react-query-persist-client'
@@ -12,16 +13,18 @@ import { createStore } from 'jotai'
 import { atomWithImmer } from 'jotai-immer'
 import { UAParser } from 'ua-parser-js'
 
+import type { Download } from '@/api/opensubtitles'
 import type { RealtimeChannelState } from '@/api/vocab-api'
 import type { SubtitleData } from '@/components/subtitle/columns'
+import type { THEMES } from '@/components/themes'
+import type { ArrayConcat } from '@/lib/utilities'
 import type { RowSelectionChangeFn } from '@/types/utils'
 
-import { DEFAULT_THEME, type THEMES } from '@/components/themes'
+import { DEFAULT_THEME } from '@/components/themes'
 import { MS_PER_MINUTE } from '@/constants/time'
 import { env } from '@/env'
 import { getLanguage } from '@/i18n'
 import { SUPPORTED_FILE_EXTENSIONS } from '@/lib/filesHandler'
-import { getFileId } from '@/lib/subtitle'
 import { omitUndefined } from '@/lib/utilities'
 import { getScrollbarWidth } from '@/lib/utils'
 
@@ -35,12 +38,38 @@ export const vocabRealtimeSyncStatusAtom = atom<RealtimeChannelState>(REALTIME_C
 export const isSourceTextStaleAtom = atom(false)
 
 export const subtitleSelectionStateAtom = atomWithImmer<Record<number, Record<string, boolean>>>({})
+export const subtitleDataSelectionStateAtom = atomWithImmer<Record<string, SubtitleData>>({})
+
+export const fileIdsAtom = atom((get) => {
+  const selectionState = get(subtitleSelectionStateAtom)
+  const subtitleData = get(subtitleDataSelectionStateAtom)
+  return Object.values(selectionState).flatMap((innerObj) => Object.keys(innerObj).filter((key) => innerObj[key] && subtitleData[key]).map(Number))
+})
+
+export const subtitleDownloadProgressAtom = atomWithImmer<Download['Body'][]>([])
 
 export const subtitleSelectionStateFamily = atomFamily((mediaId: number) => atom(
   (get) => get(subtitleSelectionStateAtom)[mediaId],
-  (get, set, ...[checked, row]: Parameters<RowSelectionChangeFn<SubtitleData>>) => {
-    set(subtitleSelectionStateAtom, (prev) => {
-      (prev[mediaId] ??= {})[getFileId(row.original)] = Boolean(checked)
+  (get, set, ...[checked, row, mode]: ArrayConcat<Parameters<RowSelectionChangeFn<SubtitleData>>, []>) => {
+    set(subtitleSelectionStateAtom, (selection) => {
+      if (mode === 'singleRow') {
+        selection[mediaId] = {}
+      }
+      else {
+        selection[mediaId] ??= {}
+        if (mode === 'singleSubRow') {
+          const parent = row.getParentRow()
+          if (parent) {
+            selection[mediaId][parent.id] = Boolean(checked)
+            for (const { id } of parent.subRows)
+              selection[mediaId][id] = false
+          }
+        }
+      }
+      selection[mediaId][row.id] = Boolean(checked)
+      set(subtitleDataSelectionStateAtom, (data) => {
+        data[row.id] = row.original
+      })
     })
   },
 ))

@@ -1,8 +1,10 @@
 // https://github.com/mozilla/pdf.js/issues/10478
+import type { FileTypeResult } from 'file-type'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 import type { TextContent } from 'pdfjs-dist/types/src/display/api'
 
-import { fileTypeFromBuffer, type FileTypeResult } from 'file-type'
-import { getDocument, type PDFDocumentProxy } from 'pdfjs-dist'
+import { fileTypeFromBuffer } from 'file-type'
+import { getDocument } from 'pdfjs-dist'
 import 'pdfjs-dist/build/pdf.worker.mjs'
 
 interface FileContent {

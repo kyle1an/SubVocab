@@ -1,4 +1,6 @@
-import { cva, type VariantProps } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
+
+import { cva } from 'class-variance-authority'
 
 const segmentedControlVariants = cva(
   `grid w-full !touch-manipulation select-none auto-cols-[1fr] grid-flow-col overflow-hidden tracking-wide antialiased outline-none ffs-['cv08'] [text-rendering:geometricPrecision]`,

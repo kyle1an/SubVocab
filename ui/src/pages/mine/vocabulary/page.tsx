@@ -1,7 +1,9 @@
+import type { LabelDisplayTable } from '@/lib/vocab'
+
 import { baseVocabAtom, useIrregularMapsQuery } from '@/api/vocab-api'
 import { VocabDataTable } from '@/components/VocabData'
 import { LabeledTire } from '@/lib/LabeledTire'
-import { formVocab, type LabelDisplayTable } from '@/lib/vocab'
+import { formVocab } from '@/lib/vocab'
 import { statusRetainedList } from '@/lib/vocab-utils'
 
 export function VocabularyPage() {

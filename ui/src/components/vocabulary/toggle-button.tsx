@@ -1,4 +1,6 @@
-import { LEARNING_PHASE, type VocabState } from '@/lib/LabeledTire.ts'
+import type { VocabState } from '@/lib/LabeledTire.ts'
+
+import { LEARNING_PHASE } from '@/lib/LabeledTire.ts'
 
 export function VocabToggle<T extends VocabState>({
   vocab,

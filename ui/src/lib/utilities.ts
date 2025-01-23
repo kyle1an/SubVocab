@@ -1,4 +1,4 @@
-import type { Simplify, ValueOf } from 'type-fest'
+import type { ArraySplice, Simplify, UnknownArray, ValueOf } from 'type-fest'
 
 import { isUndefined, omitBy } from 'es-toolkit'
 
@@ -32,3 +32,5 @@ export type FallBack<M, U> = Simplify<ValueOf<M> | Exclude<U, keyof M>>
 export function getFallBack<P extends string, T extends Record<string, string>>(key: P, map: T) {
   return (map[key] ?? key) as FallBack<T, P>
 }
+
+export type ArrayConcat<T extends UnknownArray, Item extends UnknownArray> = ArraySplice<T, T['length'], 0, Item>

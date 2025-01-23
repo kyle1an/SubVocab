@@ -1,4 +1,6 @@
-import { type ClassArray, type ClassDictionary, type ClassValue, clsx } from 'clsx/lite'
+import type { ClassArray, ClassDictionary, ClassValue } from 'clsx/lite'
+
+import { clsx } from 'clsx/lite'
 import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: Exclude<ClassValue, ClassArray | ClassDictionary>[]) {

@@ -1,9 +1,7 @@
+import type { LearningPhase, TrieWordLabel, VocabState, WordLocator } from '@/lib/LabeledTire.ts'
+
 import {
   LEARNING_PHASE,
-  type LearningPhase,
-  type TrieWordLabel,
-  type VocabState,
-  type WordLocator,
 } from '@/lib/LabeledTire.ts'
 
 export type LabelData = {
